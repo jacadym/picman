@@ -1,0 +1,223 @@
+<?php
+
+class db_sqlite {
+
+	var $row; // wiersz w zapytaniu
+	var $cid; // connect ID
+	var $qid; // query ID
+
+	var $_tuniq   = '';
+	var $_tdstart = 0; // time db - start
+	var $_tdstop  = 0; // time db - stop
+	var $_tqstart = 0; // time query - start
+	var $_tqstop  = 0; // time query - stop
+	var $_tqsume  = 0; // time query - sume
+	var $_qqsume  = 0; // quantity query - sume
+
+	function db_sqlite() {
+		$this->cid = null;
+		$this->qid = null;
+
+		$this->_tdstart = $this->_microtime();
+		$this->_tuniq   = uniqid('DB_');
+	}
+	
+	function connect($url) {
+		$url = parse_url($url);
+
+		$dbname = substr($url["path"], 0);
+
+		debug_info(1, 'SQLite', "Connect: $dbname");
+		$this->cid = sqlite_open($dbname, 0666, $error);
+		$this->check_errors($error);
+	}
+	
+	function close() {
+		$this->_tdstop  = $this->_microtime();
+		debug_info(3, 'DB_Close', sprintf('SUME: %04.4f [%2d]', $this->_tqsume, $this->_qqsume));
+		debug_info(3, 'DB_Close', sprintf('PROG: %04.4f (IP:%s)', $this->_tdstop - $this->_tdstart, $_SERVER['REMOTE_ADDR']));
+		if ($this->cid) {
+			sqlite_close($this->cid);
+			debug_info(1, 'SQLite', 'Close connection to DB');
+		}
+	}
+	
+	function check_errors($error = '') {
+		if ($this->cid) {
+			$errno = sqlite_last_error($this->cid);
+			if ($errno) {
+				$error = "$errno: ". sqlite_error_string($errno);
+			}
+		}
+		else {
+			$error = 'Not connect to DB!';
+		}
+		if (!empty($error)) {
+			debug_info(1, 'DB_Error', $error);
+			return true;
+		}
+		return false;
+	}
+	
+	function query($query) {
+		$this->row     = 0;
+		$this->_query_start();
+		$this->qid = @sqlite_query($this->cid, $query);
+		debug_info(2, 'DB_Query', $query);
+		$this->check_errors();
+		$this->_query_stop();
+		return $this->qid;
+	}
+
+	function query_range($query, $limit, $start = null) {
+		return $this->query($query . " LIMIT $limit" . ($start ? " OFFSET $start" : ''));
+	}
+	
+	function num_rows() {
+		if ($this->qid) {
+			return sqlite_num_rows($this->qid);
+		}
+	}
+	
+	function affected_rows() {
+		if ($this->qid) {
+			return sqlite_changes($this->qid);
+		}
+	}
+
+	function fetch_array() {
+		if ($this->qid) {
+			return @sqlite_fetch_array($this->qid, SQLITE_BOTH);
+		}
+	}
+
+	function seek($rownum = null) {
+		if ($rownum) {
+			sqlite_seek($this->qid, $rownum);
+		}
+	}
+	
+	function set_qid($qid) {
+		$this->qid = $qid;
+	}
+
+	/*
+	** Funkcje prywatne
+	*/
+	
+	function _microtime() {
+		list ($usec, $sec) = explode(' ',microtime());
+		return ((float)$usec + (float)$sec);
+	}
+
+	function _query_start() {
+		$this->_tqstart = $this->_microtime();
+	}
+	
+	function _query_stop() {
+		$this->_tqstop  = $this->_microtime();
+		$time           = $this->_tqstop - $this->_tqstart;
+		$this->_tqsume  += $time;
+		$this->_qqsume++;
+		debug_info(3, 'DB_QTime', sprintf('EXEC: %04.4f [%2d]', $time, $this->_qqsume));
+		$this->_tqstart = 0;
+	}
+}
+
+
+function db_connect($url) {
+	global $dbobj;
+	$dbobj = new db_sqlite();
+	$dbobj->connect($url);
+}
+
+function db_close() {
+	global $dbobj;
+	$dbobj->close();
+}
+
+function db_next_id($name) {
+	global $dbobj;
+	$name = db_prefix_tables($name);
+	return $dbobj->next_id($name);
+}
+
+/**
+ * Zapytanie do DB
+ * @param  string  $query - treść zapytania, nazwy tabel muszą być podane w nawiasach {}
+ * dodatkowo jako następne parametry funkcji można podać parametry zapytania, np.
+ * db_query("INSERT INTO {users} (name, surname) VALUES ('%s','%s')", 'John', 'Smith')
+ * @return identyfikator zapytania
+ */
+function db_query($query) {
+	global $dbobj;
+	$args = func_get_args();
+	$query = db_prefix_tables($query);
+	if (count($args) > 1) {
+		if (is_array($args[1])) {
+			$args1 = array_map("check_query", $args[1]);
+			$nargs = array_merge(array($query), $args1);
+//			debug_info(5, 'DB_Query', 'ARGS1_is_array: '.join(',', $args1));
+		}
+		else {
+			$nargs = array_map("check_query", $args);
+			$nargs[0] = $query;
+		}
+//		debug_info(5, 'DB_Query', 'PARAMS: '.join(',', $nargs));
+		return $dbobj->query(call_user_func_array("sprintf", $nargs));
+	}
+	else {
+		return $dbobj->query($query);
+	}
+}
+
+/**
+ * Zapytanie do BD z zakresem odpowiedzi
+ * @param  string  $query - treść zapytania
+ * Uwagi jak dla db_query z tym, że na samym końcu należy dodać jeszcze dwa 
+ * parametry wywołania: $limit, $start
+ */
+function db_query_range($query) {
+	global $dbobj;
+	$args = func_get_args();
+	$start = array_pop($args);
+	$limit = array_pop($args);
+	if (count(func_get_args()) > 3) {
+		$args = array_map("check_query", $args);
+		$args[0] = db_prefix_tables($query);
+		$query = call_user_func_array("sprintf", $args);
+	}
+	else {
+		$query = db_prefix_tables($query);
+	}
+	return $dbobj->query_range($query, $limit, $start);
+}
+
+function db_num_rows($result) {
+	global $dbobj;
+	$dbobj->set_qid($result);
+	return $dbobj->num_rows();
+}
+
+function db_affected_rows($result) {
+	global $dbobj;
+	$dbobj->set_qid($result);
+	return $dbobj->affected_rows();
+}
+
+function db_fetch_array($result) {
+	global $dbobj;
+	$args = func_get_args();
+	$dbobj->set_qid($result);
+	return $dbobj->fetch_array($args[1], (count($args) > 1) ? $args[2] : null);
+}
+
+function db_seek($result) {
+	global $dbobj;
+	$args = func_get_args();
+	$dbobj->set_qid($result);
+	return $dbobj->seek(count($args) ? $args[1] : null);
+}
+
+// vim:noexpandtab:syntax=php:autoindent:cindent:nowrap
+?>

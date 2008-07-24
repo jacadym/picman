@@ -1,0 +1,6 @@
+BODY,TD { font-family: helvetica,sans-serif; font-size: 12px; color: #eeeeee; }
+TH { font-family: helvetica,sans-serif; font-size: 13px; font-weight: bold; color: #eeeeee; text-align: left; }
+A:link { font-family: helvetica,sans-serif; text-decoration: none; color: #ffc800; }
+A:active { font-family: helvetica,sans-serif; text-decoration: none; color: #ffc800; }
+A:visited { font-family: helvetica,sans-serif; text-decoration: none; color: #c8a4db; }
+

@@ -1,0 +1,48 @@
+<?php
+
+/*
+** Plik odpowiedzialny za komunikację z DB
+** W zależności od parametów ustawienia możliwe wczytanie odpowiednich
+** plików z funkcjami do komunikacji z DB
+*/
+
+/**
+ * Zamiana nazw tabel w zapytaniach w formacie '{table}' z uwzględnieniem prefiksów
+ */
+function db_prefix_tables($sql) {
+	global $db_prefix;
+
+	if (is_array($db_prefix)) {
+		$prefix = $db_prefix["default"];
+		foreach ($db_prefix as $key => $val) {
+			if ($key !== "default") {
+				$sql = strtr($sql, array("{".$key."}" => $val.$key));
+			}
+		}
+	}
+	else {
+		$prefix = $db_prefix;
+	}
+	return strtr($sql, array("{" => $prefix, "}" => ""));
+}
+
+/**
+ * Dodanie znaków "'" jeżeli występują w treści
+ */
+function check_query($text) {
+	return addslashes($text);
+}
+
+/*
+** Wczytanie pliku odpowiedzialnego za obsługę baz danych
+*/
+$db_type = substr($db_url, 0, strpos($db_url, "://"));
+$db_file = PICMAN_INCLUDE . "db/database_${db_type}.pinc";
+if (is_file($db_file)) {
+	include_once $db_file;
+}
+
+db_connect($db_url);
+
+// vim:noexpandtab:syntax=php:autoindent:cindent:nowrap
+?>

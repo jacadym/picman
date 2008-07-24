@@ -1,0 +1,97 @@
+<HTML>
+<HEAD>
+	<TITLE>%%title%%</TITLE>
+	<link rel="stylesheet" href="%%imgdir%%/class.css" type="text/css">
+
+<style type"text/css">
+.navmenu         { font-family: Verdana, Arial, Helvetica, sans-serif; color: #FFFFFF; font-size: 100%; font-weight: bold; background: #66707C; border-style: none; }
+.navmenu a       { position: relative; display: block; padding-top: 2px; padding-right: 5px; padding-bottom: 2px; padding-left: 5px; text-decoration: none; color: #FFFFFF; }
+.navmenu a:hover { background: #C2C9D3; text-decoration: none; color: #000000; }
+</style>
+
+</HEAD>
+
+<script language="JavaScript" type="text/javascript">
+
+// Agents
+var xOp7=false,xOp5or6=false,xIE4Up=false,xNN4=false,xUA=navigator.userAgent.toLowerCase();
+if(window.opera){
+xOp7=(xUA.indexOf('opera 7')!=-1 || xUA.indexOf('opera/7')!=-1);
+if (!xOp7) xOp5or6=(xUA.indexOf('opera 5')!=-1 || xUA.indexOf('opera/5')!=-1 || xUA.indexOf('opera 6')!=-1 || xUA.indexOf('opera/6')!=-1);
+}
+else if(document.layers) xNN4=true;
+else {xIE4Up=document.all && xUA.indexOf('msie')!=-1 && parseInt(navigator.appVersion)>=4;}
+
+
+// Specify the image files
+var Pic = new Array()
+%%picslist%%
+// Preloaded images
+var preLoad = new Array()
+
+
+// Set slideShowSpeed (milliseconds)
+var slideShowSpeed = %%time%%
+// Duration of crossfade (seconds)
+var crossFadeDuration = 3
+// Start from picnum
+var picnum = %%startpic%%
+
+var t
+
+function preLoadPic(index) {
+	if (Pic[index] != '') {
+		window.status='Loading : '+Pic[index]
+        preLoad[index] = new Image()
+        preLoad[index].src = Pic[index]
+        Pic[index] = ''
+        window.status=''
+	}
+}
+
+function runSlideShow() {
+	if (xIE4Up) {
+		document.images.SlideShow.style.filter="blendTrans(duration=2)"
+		document.images.SlideShow.style.filter= "blendTrans(duration=crossFadeDuration)"
+		document.images.SlideShow.filters.blendTrans.Apply()
+	}
+	document.images.SlideShow.src = preLoad[picnum].src
+	if (xIE4Up) {
+		document.images.SlideShow.filters.blendTrans.Play()
+	}
+	picnum = picnum + 1
+	if (picnum > (Pic.length-1)) picnum = 0
+	t = setTimeout('runSlideShow()', slideShowSpeed)
+	preLoadPic(picnum)
+}
+
+function endSlideShow() {
+	self.document.location = '%%endshow%%'
+}
+
+	preLoadPic(picnum)
+
+</script>
+
+
+<BODY BGCOLOR="#000000">
+
+<DIV ALIGN=center><TABLE BORDER=0 CELLSPACING=1>
+<TR><TD BGCOLOR="white" HEIGHT=1></TD></TR>
+
+<TR><TD></TD></TR>
+
+<TR><TD ALIGN=center><a href="javascript:runSlideShow()"><IMG SRC="%%image%%" BORDER=0 name="SlideShow"></a></TD></TR>
+<TR><TD></TD></TR>
+
+<TR><TD>
+	<table border=0 width="100%"><tr>
+		<td align="center" class="navmenu" style="white-space: nowrap;"><a href="javascript:endSlideShow()" class="navmenu">End Slide Show</a></td>
+	</tr></table>
+</TD></TR>
+
+<TR><TD BGCOLOR="white" HEIGHT=1></TD></TR>
+
+</TABLE></DIV>
+
+</BODY></HTML>
