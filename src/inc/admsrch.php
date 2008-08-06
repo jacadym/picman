@@ -37,6 +37,10 @@ div.frame {
 	width: 700px;
 }
 
+td span {
+	white-space: nowrap;
+}
+
 //--></STYLE>
 </HEAD>
 
@@ -50,27 +54,49 @@ echo FramedTable1();
 $result = db_query("SELECT * FROM {categories} WHERE id = $page_id");
 if (db_num_rows($result)) {
 	$item = db_fetch_array($result);
-	echo '<form method="post"><table border="0"><tr><td width="50"></td><td>';
-	echo '<b>'.$item['name'].'</b>: ';
-	echo FormInput('search', 25).' <input type="submit" value="    Search    ">';
-	echo '</td><td width="50"></td></tr></table></form>';
 
+	$frm['#tags'] = GetTags();
+
+	echo '<form method="post"><table border="0">';
+
+	echo '<tr><td width="50"></td><td><b>'.$item['name'].'</b>:</td><td>';
+	echo FormInput('search', 25).' <input type="submit" value="    Search    ">';
+	echo '</td><td width="50"></td></tr>';
+
+	echo '<tr><td width="50"></td><td>Tags: '.FormSelect('cond', array('and' => 'and', 'or' => 'or')).'</td><td>';
+	echo FormCheckarea('tags');
+	echo '</td><td width="50"></td></tr>';
+
+	echo '</table></form>';
+
+	$cond = array(
+		"C.lnum BETWEEN $item[lnum] AND $item[rnum]",
+		"P.id = C.id_parent",
+		"C.uniqid = G.uid_cat"
+	);
 	if (!empty($frm['search'])) {
+		$cond[] = "(upper(G.name) LIKE upper('%$frm[search]%') OR upper(G.description) LIKE upper('%$frm[search]%'))";
+	}
+	if (isset($frm['tags']) && count($frm['tags'])) {
+		if ($frm['cond'] == 'or') {
+			$cond[] = "G.id IN (SELECT id_col FROM {tag_collections} T WHERE id_tag IN (".join(',', $frm['tags'])."))";
+		}
+		else {
+			foreach ($frm['tags'] as $tagid) {
+				$cond[] = "G.id IN (SELECT id_col FROM {tag_collections} T WHERE id_tag = $tagid)";
+			}
+		}
+	}
+	
+	if (count($cond) > 3) {
 		$qid = db_query("
 		SELECT DISTINCT
 			C.id AS cid, C.name AS catname, C.catdir AS catdir, P.name AS parent,
-			G.id AS id, G.name AS name, G.grdir AS grdir, G.icoindex AS icoindex, G.thumbsubdir AS thumbsubdir, G.thumbtemp AS thumbtemp,
+			G.id AS id, G.name AS name, G.coldir AS coldir, G.icoindex AS icoindex,
+			G.thumbsubdir AS thumbsubdir, G.thumbtemp AS thumbtemp,
 			G.quantity AS quantity, G.date_create AS date_create
-		FROM {groups} G, {categories} C, {categories} P
-		WHERE
-			C.lnum BETWEEN $item[lnum] AND $item[rnum]
-			AND P.id = C.id_parent
-			AND C.uniqid = G.uid_cat
-			AND (
-				upper(G.name) LIKE upper('%$frm[search]%')
-				OR
-				upper(G.description) LIKE upper('%$frm[search]%')
-			)
+		FROM {collections} G, {categories} C, {categories} P
+		WHERE ".join(" AND ", $cond)."
 		ORDER BY G.date_create DESC
 		");
 		echo '<table border="0">';
@@ -84,7 +110,7 @@ if (db_num_rows($result)) {
 			printf("\n<!-- %d:%d: %s -->\n", $out['cid'], $out['id'], $out['catname']);
 		}
 		foreach ($o as $out) {
-			$icon   = GetDirForCat($out['cid']).$out['grdir'].'/';
+			$icon   = GetDirForCat($out['cid']).$out['coldir'].'/';
 			$icoarr = split(':', $out['icoindex']);
 			if ($icoarr[0] == 'T') {
 				$icon .= sprintf($out['thumbsubdir'].'/'.$out['thumbtemp'], $icoarr[1]);
@@ -95,7 +121,7 @@ if (db_num_rows($result)) {
 			echo
 			'<tr valign="top">'.
 				'<td>'.
-					'<a href="'.sprintf(PICMAN_GROUP."i%03d.html", $out['id']).'">'.
+					'<a href="'.sprintf(PICMAN_COLLECTION."i%03d.html", $out['id']).'">'.
 					'<img src="'.PICMAN_IMAGE.$icon.'" border="1" />'.
 					'</a>'.
 				'</td>'.

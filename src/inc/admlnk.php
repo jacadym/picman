@@ -50,7 +50,7 @@ echo AdminMenu();
 if (!isset($frm)) $frm = array('catcol' => 1, 'catrow' => 8, 'grcol'  => 4, 'grrow'  => 4);
 //if ($page_id) GetLinkData($page_id);
 if ($page_id) {
-	$result = db_query("SELECT G.id AS id, G.name AS name, C.id AS cid FROM {groups} G, {categories} C WHERE G.id = $page_id AND G.uid_cat = C.uniqid");
+	$result = db_query("SELECT G.id AS id, G.name AS name, C.id AS cid FROM {collections} G, {categories} C WHERE G.id = $page_id AND G.uid_cat = C.uniqid");
 	if (db_num_rows($result)) {
 		$item = db_fetch_array($result);
 		$frm[idgr]   = $item['id'];
@@ -69,7 +69,7 @@ echo
 	'<TR><TD></TD><TD ALIGN=right> '.
 		' <INPUT TYPE=submit VALUE="    Send    "> '.
 	'</TD></TR>'.
-	'<TR><TD> Group name: </TD><TD> '.
+	'<TR><TD> Collection name: </TD><TD> '.
 		$frm[name].
 		FormHidden('idgr').
 	' </TD></TR>'.

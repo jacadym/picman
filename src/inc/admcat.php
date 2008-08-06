@@ -164,8 +164,8 @@ if (isset($frm[action])) {
 			template    = '".FrmDb($frm[dirtem])."',
 			catrows     = $frm[catrow],
 			catcols     = $frm[catcol],
-			grrows      = $frm[grrow],
-			grcols      = $frm[grcol]
+			colrows     = $frm[grrow],
+			colcols     = $frm[grcol]
 			WHERE id = $page_id
 			");
 /**/
@@ -235,7 +235,7 @@ if (isset($frm[action])) {
 			"uniqid,id_parent,date_create,".
 			"name,title,header,description,".
 			"hidden,catdir,template,options,".
-			"catrows,catcols,grrows,grcols,".
+			"catrows,catcols,colrows,colcols,".
 			"lnum, rnum) VALUES (
 			'".FrmDb($frm[uniqid])."', $parent_id, '".$frm[datecr]."',
 			'".FrmDb($frm[name])."', '".FrmDb($frm[title])."', '".FrmDb($frm[header])."','".FrmDb($frm[desc])."',
@@ -259,7 +259,7 @@ if (isset($frm[action])) {
 		$result = db_query("SELECT uniqid, name, id_parent, lnum, rnum FROM {categories} WHERE id = $page_id");
 		if (db_num_rows($result)) {
 			$item     = db_fetch_array($result);
-			$quantity = db_fetch_array(db_query("SELECT count(*) FROM {groups} WHERE uid_cat = '%s'", $item['uniqid']));
+			$quantity = db_fetch_array(db_query("SELECT count(*) FROM {collections} WHERE uid_cat = '%s'", $item['uniqid']));
 			if ($quantity['count'] > 0 || ($item['rnum'] - $item['lnum']) > 1) {
 				echo 
 				'<BR><BR>'.
@@ -345,7 +345,7 @@ function DisplayCategoryForm() {
 		FormSelect('catrow', range(1, 20), 0).
 		' (columns x rows) '.
 	'</TD></TR>'.
-	'<TR><TD> Groups: </TD><TD> '.
+	'<TR><TD> Collections: </TD><TD> '.
 		FormSelect('grcol', range(1, 10), 0).
 		' x '.
 		FormSelect('grrow', range(1, 20), 0).

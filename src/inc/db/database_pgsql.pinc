@@ -1,4 +1,5 @@
 <?php
+/* $Id$ */
 
 class db_pgsql {
 
@@ -106,6 +107,14 @@ class db_pgsql {
 	
 	function set_qid($qid) {
 		$this->qid = $qid;
+	}
+
+	function next_id($name) {
+		$res = 0;
+		if ($arr = $this->fetch_array($this->query("SELECT nextval('$name') AS num"))) {
+			$res = $arr['num'];
+		}
+		return $res;
 	}
 
 	/*
@@ -226,5 +235,8 @@ function db_seek($result) {
 	return $dbobj->seek(count($args) ? $args[1] : null);
 }
 
+/*
+** $Log$
+*/
 // vim:noexpandtab:syntax=php:autoindent:cindent:nowrap
 ?>

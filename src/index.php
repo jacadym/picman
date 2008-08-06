@@ -86,13 +86,13 @@ function SetPageParams() {
     if (preg_match("|p(\d+)|i", $PATH_INFO, $regs)) $page_pg = 0 + $regs[1];
 }
 
-function GetDirForGroup($id_group) {
-	$link = db_fetch_array(db_query("SELECT uid_group FROM {links} WHERE id = $id_group"));
-	if ($link['uid_group']) {
-		$group = db_fetch_array(db_query("SELECT * FROM {groups} WHERE uniqid = '".$link['uid_group']."'"));
+function GetDirForCollection($id_group) {
+	$link = db_fetch_array(db_query("SELECT uid_col FROM {links} WHERE id = $id_group"));
+	if ($link['uid_col']) {
+		$group = db_fetch_array(db_query("SELECT * FROM {collections} WHERE uniqid = '".$link['uid_col']."'"));
 	}
 	else {
-		$group = db_fetch_array(db_query("SELECT * FROM {groups} WHERE id = $id_group"));
+		$group = db_fetch_array(db_query("SELECT * FROM {collections} WHERE id = $id_group"));
 	}
 	$result = db_query("
 	SELECT DISTINCT P.id AS id, P.catdir AS catdir, P.lnum AS plnum
@@ -106,7 +106,7 @@ function GetDirForGroup($id_group) {
 		while ($level = db_fetch_array($result)) {
 			$dirs[] = $level['catdir'];
 		}
-		$dirs[] = $group['grdir'];
+		$dirs[] = $group['coldir'];
 		return preg_replace('/[\/]+/', '/', join('/', $dirs).'/');
 	}
 }
@@ -115,7 +115,7 @@ function GetDirForCat($id_obj, $id_group = 0) {
 	static $dir = array();
 	
 	if ($id_group) {
-		$group  = db_fetch_array(db_query("SELECT * FROM {groups} WHERE id = $id_group"));
+		$group  = db_fetch_array(db_query("SELECT * FROM {collections} WHERE id = $id_group"));
 		$id_dir = 'G_'.$id_group;
 		$sql = "
 		SELECT DISTINCT P.id AS id, P.catdir AS catdir, P.lnum AS plnum
@@ -173,15 +173,15 @@ function GetTopCatsForCat($id_obj) {
 	return $txt;
 }
 
-function GetTopCatsForGroup($id_obj, $display = 0) {
+function GetTopCatsForCollection($id_obj, $display = 0) {
 	$txt = '<a href="'.PICMAN_INDEX.'">Category</a> :: ';
 
-	$link = db_fetch_array(db_query("SELECT uid_group FROM {links} WHERE id = $id_obj"));
-	if ($link['uid_group']) {
-		$group = db_fetch_array(db_query("SELECT * FROM {groups} WHERE uniqid = '".$link['uid_group']."'"));
+	$link = db_fetch_array(db_query("SELECT uid_col FROM {links} WHERE id = $id_obj"));
+	if ($link['uid_col']) {
+		$group = db_fetch_array(db_query("SELECT * FROM {collections} WHERE uniqid = '".$link['uid_col']."'"));
 	}
 	else {
-		$group = db_fetch_array(db_query("SELECT * FROM {groups} WHERE id = $id_obj"));
+		$group = db_fetch_array(db_query("SELECT * FROM {collections} WHERE id = $id_obj"));
 	}
 	$result = db_query("
 	SELECT DISTINCT P.id AS id, P.name AS name, P.lnum AS plnum
@@ -196,15 +196,15 @@ function GetTopCatsForGroup($id_obj, $display = 0) {
 			$cat_arr[] = sprintf('<a href="'.PICMAN_MAIN."i%03dp%03d.html\">%s</a>", $cat['id'], 1, $cat['name']);
 		}
 		if ($display) {
-			$cat_arr[] = sprintf('<a href="'.PICMAN_GROUP."i%03d.html\">%s</a>", $id_obj, $group['name']);
-			$cat_arr[] = sprintf('<a href="'.PICMAN_GROUP."i%03dp%03d.html\">Page %d</a>", $id_obj, $display, $display);
+			$cat_arr[] = sprintf('<a href="'.PICMAN_COLLECTION."i%03d.html\">%s</a>", $id_obj, $group['name']);
+			$cat_arr[] = sprintf('<a href="'.PICMAN_COLLECTION."i%03dp%03d.html\">Page %d</a>", $id_obj, $display, $display);
 		}
 		else {
 			$cat_arr[] = '<b>'.$group['name'].'</b>';
 		}
 		$cat_arr[] = sprintf('<a href="'.PICMAN_SLIDESHOW."i%03dp%03d.html\">[!!]</a>", $id_obj, $display ? $display : 1);
 		if (PICMAN_ADMINISTRATION) {
-			$cat_arr[] = sprintf('<a href="'.PICMAN_ADMIN_GROUP."i%03dp%03d.html\">[::]</a>", $id_obj, 1);
+			$cat_arr[] = sprintf('<a href="'.PICMAN_ADMIN_COLLECTION."i%03dp%03d.html\">[::]</a>", $id_obj, 1);
 			if ($display) {
 				$cat_arr[] = sprintf('<a href="'.PICMAN_ADMIN_THUMB."i%03dp%03d.html\">[&lt;&gt;]</a>", $id_obj, $display);
 //			} else {
@@ -223,28 +223,28 @@ function GetGrpContent($id_cat, $item_txt, $txt_pre, $txt_post, $txt_prerow, $tx
 	
 	$pagesel = '';
 
-	$group  = db_fetch_array(db_query("SELECT grcols, grrows FROM {categories} WHERE id = $id_cat"));
-	$perpage = $group['grcols'] * $group['grrows'];
+	$group  = db_fetch_array(db_query("SELECT colcols, colrows FROM {categories} WHERE id = $id_cat"));
+	$perpage = $group['colcols'] * $group['colrows'];
 
 	$ticodir = $PICMAN_INFO['dircat'];
 
 	$result = db_query("
 	SELECT DISTINCT
-		G.id AS id, G.uniqid AS uniqid, G.name AS name, G.onum AS onum, G.quantity AS quantity, G.date_create AS dcreate,
-		G.icoindex AS icoindex, G.grdir AS grdir, G.thumbsubdir AS thumbsybdir, G.thumbtemp AS thumbtemp, G.uid_cat AS uid_cat, 0 AS linkitem
+		G.id AS id, G.uniqid AS uniqid, G.name AS name, G.weight AS weight, G.quantity AS quantity, G.date_create AS dcreate,
+		G.icoindex AS icoindex, G.coldir AS coldir, G.thumbsubdir AS thumbsubdir, G.thumbtemp AS thumbtemp, G.uid_cat AS uid_cat, 0 AS linkitem
 	FROM {categories} C
-		INNER JOIN {groups} G ON (C.uniqid = G.uid_cat)
+		INNER JOIN {collections} G ON (C.uniqid = G.uid_cat)
 	WHERE C.id = $id_cat
 	
 	UNION SELECT
-		G.id AS id, G.uniqid AS uniqid, G.name AS name, L.onum AS onum, G.quantity AS quantity, G.date_create AS dcreate,
-		G.icoindex AS icoindex, G.grdir AS grdir, G.thumbsubdir AS thumbsubdir, G.thumbtemp AS thumbtemp, G.uid_cat AS uid_cat, 1 AS linkitem
+		G.id AS id, G.uniqid AS uniqid, G.name AS name, L.weight AS weight, G.quantity AS quantity, G.date_create AS dcreate,
+		G.icoindex AS icoindex, G.coldir AS coldir, G.thumbsubdir AS thumbsubdir, G.thumbtemp AS thumbtemp, G.uid_cat AS uid_cat, 1 AS linkitem
 	FROM {categories} C
 		INNER JOIN {links} L ON (C.uniqid = L.uid_cat)
-		INNER JOIN {groups} G ON (L.uid_group = G.uniqid)
+		INNER JOIN {collections} G ON (L.uid_col = G.uniqid)
 	WHERE C.id = $id_cat
 
-	ORDER BY onum DESC, dcreate DESC, name
+	ORDER BY weight DESC, dcreate DESC, name
 	");
 	$txt = '';
 	if ($num = db_num_rows($result)) {
@@ -276,26 +276,27 @@ function GetGrpContent($id_cat, $item_txt, $txt_pre, $txt_post, $txt_prerow, $tx
 			}
 			$pagesel = join(' || ', $pages_arr);
 		}
-		$arr_groups = array();
+		$arr_collections = array();
 		$arr_links  = array();
 		db_seek($result, $startnum);
 		for ($rec = $startnum; ($rec < $num) && ($rec < $startnum + $perpage); $rec++) {
-			$grp = db_fetch_array($result);
+			$grp_dir = '';
+			$grp     = db_fetch_array($result);
 			if (!empty($grp['icoindex'])) {
-				$sql_dir = "$ticodir/".$grp['grdir'];
+				$grp_dir = "$ticodir/".$grp['coldir'];
 				$icoarr  = split(':', $grp['icoindex']);
 				if ($icoarr[0] == 'T') {
 					// Jako ikona będzie thumnbails
 					$grp['icoindex'] = sprintf($grp['thumbsubdir']."/".$grp['thumbtemp'], $icoarr[1]);
 				}
-				if ($grp['linkitem']) $sql_dir = '';
+				if ($grp['linkitem']) $grp_dir = '';
 			}
-			$arr_groups[] = array(
-				'id'    => $grp['id'],
-				'name'  => $grp['name'],
-				'count' => $grp['quantity'],
-				'icon'  => $grp['icoindex'],
-				'dir'   => $sql_dir,
+			$arr_collections[] = array(
+				'id'     => $grp['id'],
+				'name'   => $grp['name'],
+				'count'  => $grp['quantity'],
+				'icon'   => $grp['icoindex'],
+				'dir'    => $grp_dir,
 				'uniqid' => $grp['uniqid'],
 				'date'   => date('Y-m-d', strtotime($grp['dcreate'])),
 				'link'   => $grp['linkitem']
@@ -305,13 +306,13 @@ function GetGrpContent($id_cat, $item_txt, $txt_pre, $txt_post, $txt_prerow, $tx
 
 		$links_output = array();
 		$qid_links = db_query("
-		SELECT DISTINCT C.id AS id, C.name AS name, L.uid_group AS uid_group FROM {links} L
+		SELECT DISTINCT C.id AS id, C.name AS name, L.uid_col AS uid_col FROM {links} L
 			INNER JOIN {categories} C ON (C.uniqid = L.uid_cat)
 		WHERE
-			(L.uid_cat IN ('".join("','", array_unique(array_values($arr_links)))."') OR L.uid_group IN ('".join("','", array_unique(array_keys($arr_links)))."'))
+			(L.uid_cat IN ('".join("','", array_unique(array_values($arr_links)))."') OR L.uid_col IN ('".join("','", array_unique(array_keys($arr_links)))."'))
 			AND C.id != $id_cat
 
-		UNION SELECT C.id AS id, C.name AS name, G.uniqid AS uid_group FROM {groups} G
+		UNION SELECT C.id AS id, C.name AS name, G.uniqid AS uid_col FROM {collections} G
 			INNER JOIN {categories} C ON (C.uniqid = G.uid_cat)
 		WHERE
 			(G.uid_cat IN ('".join("','", array_unique(array_values($arr_links)))."') OR G.uniqid IN ('".join("','", array_unique(array_keys($arr_links)))."'))
@@ -319,7 +320,7 @@ function GetGrpContent($id_cat, $item_txt, $txt_pre, $txt_post, $txt_prerow, $tx
 		");
 		if ($num_links = db_num_rows($qid_links)) {
 			while ($pos = db_fetch_array($qid_links, $idx++)) {
-				$links_output[$pos['uid_group']][$pos['id']] = $pos['name'];
+				$links_output[$pos['uid_col']][$pos['id']] = $pos['name'];
 			}
 		}
 
@@ -328,21 +329,21 @@ function GetGrpContent($id_cat, $item_txt, $txt_pre, $txt_post, $txt_prerow, $tx
 //		echo '</pre>';
 
 		$snum = 1;
-		for ($r = 1; $r <= $group['grrows'] && $snum <= $maxnum; $r++) {
+		for ($r = 1; $r <= $group['colrows'] && $snum <= $maxnum; $r++) {
 			$txt .= $txt_prerow;
-			for ($c = 1; $c <= $group['grcols'] && $snum <= $maxnum; $c++) {
-				$gr = $arr_groups[$snum - 1];
+			for ($c = 1; $c <= $group['colcols'] && $snum <= $maxnum; $c++) {
+				$gr = $arr_collections[$snum - 1];
 
-				$icon_thumb  = ($gr['link'] ? GetDirForGroup($gr['id']).'/' : '');
+				$icon_thumb  = ($gr['link'] ? GetDirForCollection($gr['id']).'/' : '');
 				$icon_thumb .= $gr['dir'].'/'.$gr['icon'];
 
-//				echo "\n<!-- Pic[$snum] : $icon_thumb --- ".$gr['dir']." :: ".$gr['icon']." -->\n";
+				echo "\n<!-- Pic[$snum] : $icon_thumb --- ".$gr['dir']." :: ".$gr['icon']." -->\n";
 				
 				$icon = preg_replace('/[\/]+/', '/',
 					(is_file(PICMAN_IMAGE_DIR.$icon_thumb) ?
 						PICMAN_IMAGE.$icon_thumb
 						:
-						DEFAULT_GROUP_ICON
+						DEFAULT_COLLECTION_ICON
 					)
 				);
 				$others = '';
@@ -352,11 +353,11 @@ function GetGrpContent($id_cat, $item_txt, $txt_pre, $txt_post, $txt_prerow, $tx
 					}
 				}
 				if (PICMAN_ADMINISTRATION == 1) {
-					$others .= sprintf('<a href="%si%03dp%03d.html" title="%s">[::]</a> ', PICMAN_ADMIN_GROUP, $gr['id'], 1, $catname);
+					$others .= sprintf('<a href="%si%03dp%03d.html" title="%s">[::]</a> ', PICMAN_ADMIN_COLLECTION, $gr['id'], 1, $catname);
 				}
 				
 				$txt .= UpdateTemplate($item_txt, array(
-					'href'  => sprintf(PICMAN_GROUP."i%03d.html", $gr['id']),
+					'href'  => sprintf(PICMAN_COLLECTION."i%03d.html", $gr['id']),
 					'name'  => $gr['name'],
 					'count' => ($gr['count'] ? $gr['count'] : ''),
 					'icon'  => $icon,
@@ -381,9 +382,9 @@ function GetCatContent($id_cat, $item_txt, $txt_pre, $txt_post, $txt_prerow, $tx
 	$perpage = $cat['catcols'] * $cat['catrows'];
 
 /*
-		(SELECT count(*) FROM {groups} G WHERE G.uid_cat = C.uniqid) AS grcount,
+		(SELECT count(*) FROM {collections} G WHERE G.uid_cat = C.uniqid) AS grcount,
 		(SELECT count(*) FROM {links} L WHERE L.uid_cat = C.uniqid) AS lncount,
-		(SELECT max(G.date_create) FROM {groups} G WHERE G.uid_cat = C.uniqid) AS dcreate
+		(SELECT max(G.date_create) FROM {collections} G WHERE G.uid_cat = C.uniqid) AS dcreate
 */
 
 	$result = db_query("
@@ -437,7 +438,7 @@ function AdminMenu() {
 	' CLASS="menu">New</a>'.
 	' :: '.
 	'<a href="" CLASS="menu">Modify</a> :: <a href="" CLASS="menu">Delete</a> </TD>
-<TH CLASS="menu"> Group: </TH><TD CLASS="menu"> <a href="'.PICMAN_ADMIN_GROUP.'" CLASS="menu">New</a> :: <a href="" CLASS="menu">Modify</a> :: <a href="" CLASS="menu">Delete</a> </TD>
+<TH CLASS="menu"> Collection: </TH><TD CLASS="menu"> <a href="'.PICMAN_ADMIN_COLLECTION.'" CLASS="menu">New</a> :: <a href="" CLASS="menu">Modify</a> :: <a href="" CLASS="menu">Delete</a> </TD>
 <TH CLASS="menu"> Link: </TH><TD CLASS="menu"> <a href="'.PICMAN_ADMIN_LINK.'" CLASS="menu">New</a> :: <a href="" CLASS="menu">Delete</a> </TD>
 </TR></table>'.
 	FramedTable2();
@@ -469,10 +470,10 @@ function FormSelect($name, $options = array(), $hash = 1) {
 	if (count($options) == 0) return '';
 	if ($hash == 1) {
 		foreach ($options as $key => $val)
-		$txt .= '<option value="'.$key.'"'.(isset($frm[$name]) && $frm[$name] == $key ? ' SELECTED' : '').'> '.$val.'</option>';
+		$txt .= '<option value="'.$key.'"'.(isset($frm[$name]) && $frm[$name] == $key ? ' selected="selected"' : '').'> '.$val.'</option>';
 	} else {
 		foreach ($options as $key)
-		$txt .= '<option value="'.$key.'"'.(isset($frm[$name]) && $frm[$name] == $key ? ' SELECTED' : '').'> '.$key.'</option>';
+		$txt .= '<option value="'.$key.'"'.(isset($frm[$name]) && $frm[$name] == $key ? ' selected="selected"' : '').'> '.$key.'</option>';
 	}
 
 	return '<select id="form-'.$name.'" name="frm['.$name.']">'.$txt.'</select>';
@@ -480,7 +481,21 @@ function FormSelect($name, $options = array(), $hash = 1) {
 
 function FormCheckbox($name) {
 	global $frm;
-	return '<input type="checkbox" id="form-'.$name.'" name="frm['.$name.']" value="1"'.(isset($frm[$name]) && $frm[$name] ? ' CHECKED' : '').'> ';
+	return '<input type="checkbox" id="form-'.$name.'" name="frm['.$name.']" value="1"'.(isset($frm[$name]) && $frm[$name] ? ' checked="checked"' : '').'> ';
+}
+
+function FormCheckarea($name) {
+	global $frm;
+	$temp = '<span><input type="checkbox" name="frm[%s][]" value="%s" %s /> %s</span> ';
+	$opt  = $frm['#'.$name];
+	$val  = $frm[$name];
+	$txt  = '';
+	if (is_array($opt) && count($opt)) {
+		foreach ($opt as $key => $label) {
+			$txt .= sprintf($temp, $name, $key, ((is_array($val) ? in_array($key, $val) : ($val == $key)) ? 'checked="checked"' : ''), $label);
+		}
+	}
+	return $txt;
 }
 
 function FormText($name, $cols = 50, $rows = 4) {
@@ -507,8 +522,8 @@ function GetCategoryData($id) {
 		$sql_options = $cat['options'];
 		$frm[catrow] = $cat['catrows'];
 		$frm[catcol] = $cat['catcols'];
-		$frm[grrow]  = $cat['grrows'];
-		$frm[grcol]  = $cat['grcols'];
+		$frm[grrow]  = $cat['colrows'];
+		$frm[grcol]  = $cat['colcols'];
 		if (!empty($cat['hidden']) && $cat['hidden']) $frm[cathid] = 1;
 	}
 }
@@ -517,34 +532,34 @@ function GetLinkData($id) {
 	global $frm;
 
 	$result = db_query("
-	SELECT C.id AS cid, L.onum AS onum, G.id AS gid, G.name AS name
+	SELECT C.id AS cid, L.weight AS weight, G.id AS gid, G.name AS name
 	FROM {links} L
-		INNER JOIN {groups} G ON (L.uid_group = G.uniqid)
+		INNER JOIN {collections} G ON (L.uid_col = G.uniqid)
 		INNER JOIN {categories} C ON (L.uid_cat = C.uniqid)
 	WHERE L.id = $id
 	");
 	if (db_num_rows($result)) {
 		$link = db_fetch_array($result);
 		$frm[parent]   = $link['cid'];
-		$frm[position] = $link['onum'];
+		$frm[position] = $link['weight'];
 		$frm[idgr]     = $link['gid'];
 		$frm[name]     = $link['name'];
 	}
 }
 
-function GetGroupData($id) {
+function GetCollectionData($id) {
 	global $frm;
 	
 	$result = db_query("
 	SELECT
-		G.uniqid AS uniqid, C.id AS cid, G.onum AS onum, G.date_create AS date_create,
+		G.uniqid AS uniqid, C.id AS cid, G.weight AS weight, G.date_create AS date_create,
 		G.name AS name, G.title AS title, G.header AS header, G.description AS description,
 		G.startnum AS startnum, G.quantity AS quantity, G.holes AS holes,
-		G.grdir AS grdir, G.picsubdir AS picsubdir, G.thumbsubdir AS thumbsubdir,
+		G.coldir AS coldir, G.picsubdir AS picsubdir, G.thumbsubdir AS thumbsubdir,
 		G.pictemp AS pictemp, G.thumbtemp AS thumbtemp, G.pgnumtemp AS pgnumtemp,
 		G.imgindex AS imgindex, G.icoindex AS icoindex,
 		G.rows AS rows, G.cols AS cols, G.options AS options
-	FROM {groups} G
+	FROM {collections} G
 		INNER JOIN {categories} C ON (G.uid_cat = C.uniqid)
 	WHERE G.id = $id
 	");
@@ -552,7 +567,7 @@ function GetGroupData($id) {
 		$cat = db_fetch_array($result);
 		$frm[uniqid]   = $cat['uniqid'];
 		$frm[parent]   = $cat['cid'];
-		$frm[position] = $cat['onum'];
+		$frm[position] = $cat['weight'];
 		$frm[datecr]   = date('Y-m-d', strtotime($cat['date_create']));
 		$frm[name]     = $cat['name'];
 		$frm[title]    = $cat['title'];
@@ -561,7 +576,7 @@ function GetGroupData($id) {
 		$frm[first]    = $cat['startnum'];
 		$frm[quantity] = $cat['quantity'];
 		$frm[holes]    = $cat['holes'];
-		$frm[dirgr]    = $cat['grdir'];
+		$frm[dirgr]    = $cat['coldir'];
 		$frm[dirimg]   = $cat['picsubdir'];
 		$frm[dirth]    = $cat['thumbsubdir'];
 		$frm[tempimg]  = $cat['pictemp'];
@@ -580,6 +595,35 @@ function GetGroupData($id) {
 		} elseif (in_array('LI', $arr_options)) {
 			$frm[options] = 'LI';
 		}
+	}
+}
+
+function GetTags($id = null) {
+	$result = db_query("
+	SELECT T.id AS id, T.name AS name, T.weight AS weight
+	FROM {tags} T
+		INNER JOIN {tag_collections} TC ON (TC.id_tag = T.id)
+		INNER JOIN {collections} C ON (C.id = TC.id_col)
+	ORDER BY T.weight DESC, T.name
+	");
+	$tags = array();
+	while ($tag = db_fetch_array($result)) {
+		$tags[$tag['id']] = $tag['name'];
+	}
+	return $tags;
+}
+
+function SetCollectionTags($id, $name) {
+	global $frm;
+	$result = db_query("
+	SELECT T.id AS id, T.name AS name
+	FROM {tags} T
+		INNER JOIN {tag_collections} TC ON (TC.id_tag = T.id)
+		INNER JOIN {collections} C ON (C.id = TC.id_col)
+	WHERE C.id = %d
+	", $id);
+	while ($tag = db_fetch_array($result)) {
+		$frm[$name][] = $tag['id'];
 	}
 }
 
@@ -712,15 +756,15 @@ class TreeDraw {
 		$this->subnode      = 0;
 
 		$this->images = array (
-			NTTREE_DOT		=> NTWEB_IMAGE.'tree_dot.gif',
-			NTTREE_FILE		=> NTWEB_IMAGE.'tree_file.gif',
-			NTTREE_DIR		=> NTWEB_IMAGE.'tree_dir.gif',
-			NTTREE_TEAM		=> NTWEB_IMAGE.'tree_team.gif',
-			NTTREE_PROJ		=> NTWEB_IMAGE.'tree_proj.gif',
-			NTTREE_GROUP	=> NTWEB_IMAGE.'tree_file.gif',
-			NTTREE_USER		=> NTWEB_IMAGE.'tree_user.gif',
-			NTTREE_BOOKUSER	=> NTWEB_IMAGE.'tree_bookuser.gif',
-			NTTREE_DELUSER	=> NTWEB_IMAGE.'tree_deluser.gif',
+			NTTREE_DOT		  => NTWEB_IMAGE.'tree_dot.gif',
+			NTTREE_FILE		  => NTWEB_IMAGE.'tree_file.gif',
+			NTTREE_DIR		  => NTWEB_IMAGE.'tree_dir.gif',
+			NTTREE_TEAM		  => NTWEB_IMAGE.'tree_team.gif',
+			NTTREE_PROJ		  => NTWEB_IMAGE.'tree_proj.gif',
+			NTTREE_COLLECTION => NTWEB_IMAGE.'tree_file.gif',
+			NTTREE_USER		  => NTWEB_IMAGE.'tree_user.gif',
+			NTTREE_BOOKUSER	  => NTWEB_IMAGE.'tree_bookuser.gif',
+			NTTREE_DELUSER	  => NTWEB_IMAGE.'tree_deluser.gif',
 		);
 		$this->image_align  = 'absmiddle';
 	}

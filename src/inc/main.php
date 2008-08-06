@@ -59,7 +59,7 @@ echo UpdateTemplate($group_temp, array(
 	'nexthref'   => $next_page_href,
 	'nextname'   => $next_page_text,
 	'categories' =>	$content_cat,
-	'groups'     => (empty($content_grp) ? '<img src="'.DEFAULT_INDEX_IMAGE.'" width=200 height=10 />' : $content_grp),
+	'collections'=> (empty($content_grp) ? '<img src="'.DEFAULT_INDEX_IMAGE.'" width=200 height=10 />' : $content_grp),
 	'pagesel'    => $pagesel_grp,
 	'desc'       => $cat['description'],
 	'imgdir'     => PICMAN_TEMPLATE_IMG . $TemplateDir,

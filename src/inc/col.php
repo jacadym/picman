@@ -1,7 +1,7 @@
 <?php
 
 $TemplateDir = PICMAN_DEFAULT_TEMP;
-$imgdir      = GetDirForGroup($page_id);
+$imgdir      = GetDirForCollection($page_id);
 
 $prev_href = '';
 $prev_name = '';
@@ -9,12 +9,12 @@ $next_href = '';
 $next_name = '';
 
 if (!empty($imgdir)) {
-	$link = db_fetch_array(db_query("SELECT uid_group FROM {links} WHERE id = $page_id"));
-	if ($link['uid_group']) {
-		$item = db_fetch_array(db_query("SELECT * FROM {groups} WHERE uniqid = '".$link['uid_group']."'"));
+	$link = db_fetch_array(db_query("SELECT uid_col FROM {links} WHERE id = $page_id"));
+	if ($link['uid_col']) {
+		$item = db_fetch_array(db_query("SELECT * FROM {collections} WHERE uniqid = '".$link['uid_col']."'"));
 	}
 	else {
-		$item = db_fetch_array(db_query("SELECT * FROM {groups} WHERE id = $page_id"));
+		$item = db_fetch_array(db_query("SELECT * FROM {collections} WHERE id = $page_id"));
 	}
 	$temp = db_fetch_array(db_query("
 	SELECT P.template AS template
@@ -59,7 +59,7 @@ if (!empty($imgdir)) {
 	if ($page_pg == 0 && in_array('HOME', $group_options)) {
 		$is_page_index = 1;
 		$group_temp    = LoadTemplateFile(PICMAN_TEMPLATE_DIR . $TemplateDir .'/'.'group_index.html');
-		$next_href     = sprintf(PICMAN_GROUP."i%03dp%03d.html", $page_id, 1);
+		$next_href     = sprintf(PICMAN_COLLECTION."i%03dp%03d.html", $page_id, 1);
 		$next_name     = LoadTemplateFile(PICMAN_TEMPLATE_DIR . $TemplateDir .'/'. 'group_next.html');
 	}
 	else {
@@ -67,11 +67,11 @@ if (!empty($imgdir)) {
 	}
 
 	if ($page_pg && $page_pg < $total_pages) {
-		$next_href = sprintf(PICMAN_GROUP."i%03dp%03d.html", $page_id, $page_pg + 1);
+		$next_href = sprintf(PICMAN_COLLECTION."i%03dp%03d.html", $page_id, $page_pg + 1);
 		$next_name = LoadTemplateFile(PICMAN_TEMPLATE_DIR . $TemplateDir .'/'. 'group_next.html');
 	}
 	if ($page_pg && $page_pg > 1) {
-		$prev_href = sprintf(PICMAN_GROUP."i%03dp%03d.html", $page_id, $page_pg - 1);
+		$prev_href = sprintf(PICMAN_COLLECTION."i%03dp%03d.html", $page_id, $page_pg - 1);
 		$prev_name = LoadTemplateFile(PICMAN_TEMPLATE_DIR . $TemplateDir .'/'. 'group_prev.html');
 	}
 
@@ -83,7 +83,7 @@ if (!empty($imgdir)) {
 				$pages_arr[] = sprintf('<b>'.$item['pgnumtemp'].'</b>', $p);
 			}
 			else {
-				$pages_arr[] = sprintf('<a href="'.PICMAN_GROUP.'i%03dp%03d.html">'.$item['pgnumtemp'].'</a>', $page_id, $p, $p);
+				$pages_arr[] = sprintf('<a href="'.PICMAN_COLLECTION.'i%03dp%03d.html">'.$item['pgnumtemp'].'</a>', $page_id, $p, $p);
 			}
 		}
 		$pagesel = join(' || ', $pages_arr);
@@ -145,7 +145,7 @@ if (!empty($imgdir)) {
 }
 
 $catdir = PICMAN_IMAGE . GetDirForCat(0, $page_id);
-$grpdir = $catdir . '/' . $item['grdir'] . '/';
+$grpdir = $catdir . '/' . $item['coldir'] . '/';
 
 echo UpdateTemplate($group_temp, array(
 	'prevhref'   => $prev_href,
@@ -160,7 +160,7 @@ echo UpdateTemplate($group_temp, array(
 	'dateupdate' => date('Y-m-d', strtotime($item['date_create'])),
 	'quantity'   => $item['quantity'],
 	'indeximg'   => $indeximg,
-	'topcat'     => GetTopCatsForGroup($page_id, $page_num),
+	'topcat'     => GetTopCatsForCollection($page_id, $page_num),
 	'pagesel'    => $pagesel,
 	'content'    => $content,
 	'imgdir'     => PICMAN_TEMPLATE_IMG . $TemplateDir,

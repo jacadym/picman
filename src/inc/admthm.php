@@ -46,12 +46,12 @@ div.frame {
 
 echo AdminMenu();
 
-	$link = db_fetch_array(db_query("SELECT uid_group FROM {links} WHERE id = $page_id"));
-	if ($link['uid_group']) {
-		$item = db_fetch_array(db_query("SELECT * FROM {groups} WHERE uniqid = '".$link['uid_group']."'"));
+	$link = db_fetch_array(db_query("SELECT uid_col FROM {links} WHERE id = $page_id"));
+	if ($link['uid_col']) {
+		$item = db_fetch_array(db_query("SELECT * FROM {collections} WHERE uniqid = '".$link['uid_col']."'"));
 	}
 	else {
-		$item = db_fetch_array(db_query("SELECT * FROM {groups} WHERE id = $page_id"));
+		$item = db_fetch_array(db_query("SELECT * FROM {collections} WHERE id = $page_id"));
 	}
 	$temp = db_fetch_array(db_query("
 	SELECT P.template AS template
@@ -62,7 +62,7 @@ echo AdminMenu();
 		$item['uid_cat']
 	));
 
-	$imgdir  = GetDirForGroup($page_id);
+	$imgdir  = GetDirForCollection($page_id);
 	$icondir = preg_replace('/[\/]+/', '/',  PICMAN_IMAGE."$imgdir/".$item['thumbsubdir']."/");
 
 	$picholes = array();
@@ -114,7 +114,7 @@ echo
 	'</TR></TABLE>'.
 	FramedTable2();
 
-$result = db_query("UPDATE {groups} SET icoindex = 'T:%s' WHERE id = %s", $icon_num, $page_id);
+$result = db_query("UPDATE {collections} SET icoindex = 'T:%s' WHERE id = %s", $icon_num, $page_id);
 
 ?>
 </DIV>

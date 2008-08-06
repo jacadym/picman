@@ -1,6 +1,6 @@
 <HTML>
 <HEAD>
-	<TITLE>Administrator :: Groups</TITLE>
+	<TITLE>Administrator :: Collections</TITLE>
 <STYLE TYPE="text/css"><!--
 
 body {
@@ -52,6 +52,10 @@ img.thumb-sel {
 	margin: 0 2px;
 }
 
+td span {
+	white-space: nowrap;
+}
+
 //--></STYLE>
 <script type="text/javascript" language="javascript">
 
@@ -91,47 +95,94 @@ if (isset($frm[action])) {
 		}
 
 		if ($page_id) {
+			// Sprawdzanie tagów
+			$tags   = GetTags();
+			$tagids = array();
+			if (isset($frm['tags']) && count($frm['tags'])) {
+				$tagids = $frm['tags'];
+			}
+			if (!empty($frm['newtags'])) {
+				foreach (split(',', $frm['newtags']) as $_tag) {
+					$tag = strtolower(trim($_tag));
+					if (!in_array($tag, $tags)) {
+						$id = db_next_id('seq_tag');
+						db_query("INSERT INTO {tags} (id, name) VALUES (%d, '%s')", $id, $tag);
+						$tags[$id] = $tag;
+						array_push($tagids, $id);
+					}
+				}
+			}
+			db_query("DELETE FROM {tag_collections} WHERE id_col = %d", $page_id);
+			if (count($tagids)) {
+				db_query("INSERT INTO {tag_collections} (id_tag,id_col) SELECT id, %d FROM {tags} WHERE id IN (%s)",
+					$page_id, join(',', $tagids)
+				);
+			}
+
 			$cat = db_fetch_array(db_query("SELECT uniqid FROM {categories} WHERE id = %d", $frm['parent']));
 			$result = db_query("
-			UPDATE {groups} SET
-			uid_cat     = '".$cat['uniqid']."',
-			uniqid      = '".FrmDb($frm[uniqid])."',
-			onum        = $frm[position],
-			date_create = '".$frm[datecr]."',
-			name        = '".FrmDb($frm[name])."',
-			title       = '".FrmDb($frm[title])."',
-			header      = '".FrmDb($frm[header])."',
-			description = '".FrmDb($frm[desc])."',
-			startnum    = $frm[first],
-			quantity    = $frm[quantity],
-			holes       = '".FrmDb($frm[holes])."',
-			grdir       = '".FrmDb($frm[dirgr])."',
-			picsubdir   = '".FrmDb($frm[dirimg])."',
-			thumbsubdir = '".FrmDb($frm[dirth])."',
-			pictemp     = '".FrmDb($frm[tempimg])."',
-			thumbtemp   = '".FrmDb($frm[tempth])."',
-			pgnumtemp   = '".FrmDb($frm[temppage])."',
-			imgindex    = '".FrmDb($frm[introimg])."',
-			icoindex    = '".FrmDb($frm[thumbimg])."',
-			rows        = $frm[serrow],
-			cols        = $frm[sercol],
-			options     = '".join('|',$arr_opt)."'
-			WHERE id = $page_id
-			");
+			UPDATE {collections} SET
+			uid_cat     = '%s',
+			uniqid      = '%s',
+			weight      = %d,
+			date_create = '%s',
+			name        = '%s',
+			title       = '%s',
+			header      = '%s',
+			description = '%s',
+			startnum    = %d,
+			quantity    = %d,
+			holes       = '%s',
+			coldir      = '%s',
+			picsubdir   = '%s',
+			thumbsubdir = '%s',
+			pictemp     = '%s',
+			thumbtemp   = '%s',
+			pgnumtemp   = '%s',
+			imgindex    = '%s',
+			icoindex    = '%s',
+			rows        = %d,
+			cols        = %d,
+			options     = '%s'
+			WHERE id = %d",
+				$cat['uniqid'],
+				FrmDb($frm['uniqid']),
+				$frm['position'],
+				$frm['datecr'],
+				FrmDb($frm['name']),
+				FrmDb($frm['title']),
+				FrmDb($frm['header']),
+				FrmDb($frm['desc']),
+				$frm['first'],
+				$frm['quantity'],
+				FrmDb($frm['holes']),
+				FrmDb($frm['dirgr']),
+				FrmDb($frm['dirimg']),
+				FrmDb($frm['dirth']),
+				FrmDb($frm['tempimg']),
+				FrmDb($frm['tempth']),
+				FrmDb($frm['temppage']),
+				FrmDb($frm['introimg']),
+				FrmDb($frm['thumbimg']),
+				$frm['serrow'],
+				$frm['sercol'],
+				join('|',$arr_opt),
+				$page_id
+			);
 			echo 
 			FramedTable1().
-			'<BR> &nbsp; OK! Modify group "'.$frm[name].'" &nbsp; <BR><BR>'.
+			'<BR> &nbsp; OK! Modify Collection "'.$frm[name].'" &nbsp; <BR><BR>'.
 			FramedTable2();
 		}
 		else {
 			// Tworzenie nowej grupy
 			$result = db_query(		
-			"INSERT INTO {groups} ( ".
+			"INSERT INTO {collections} ( ".
 			"uid_cat,uniqid,".
-			"onum,date_create,".
+			"weight,date_create,".
 			"name,title,header,description,".
 			"startnum,quantity,holes,".
-			"grdir,picsubdir,thumbsubdir,".
+			"coldir,picsubdir,thumbsubdir,".
 			"pictemp,thumbtemp,pgnumtemp,".
 			"imgindex,icoindex,".
 			"rows,cols,options".
@@ -149,7 +200,7 @@ if (isset($frm[action])) {
 			);
 			echo 
 			FramedTable1().
-			'<BR> &nbsp; OK! Created new group "'.$frm[name].'" &nbsp; <BR><BR>'.
+			'<BR> &nbsp; OK! Created new collection "'.$frm[name].'" &nbsp; <BR><BR>'.
 			FramedTable2();
 		}
 	break;
@@ -172,24 +223,28 @@ if (isset($frm[action])) {
 
 }
 else {
-	DisplayGroupForm();
+	DisplayCollectionForm();
 }
 
-function DisplayGroupForm() {
+function DisplayCollectionForm() {
 	global $page_id, $frm;
 
 	// Wartości domyślne
 	if (!isset($frm)) $frm = array('sercol' => 5, 'serrow' => 4, 'datecr' => date('Y-m-d'));
 	if ($page_id) {
-		GetGroupData($page_id);
+		GetCollectionData($page_id);
 	}
 	$hier_cat = GetCategoriesHierarchy($frm[parent], $page_id, 1);
+
+	// Odczytanie tagów	
+	$frm['#tags'] = GetTags();
+	SetCollectionTags($page_id, 'tags');
 
 	echo 
 	FramedTable1().
 	'<FORM METHOD="POST">'.
 	'<TABLE BORDER=0 CELLSPACING=1 CELLPADDING=1>'.
-	'<TR><TH> Group </TH><TD></TD></TR>'.
+	'<TR><TH> Collection </TH><TD></TD></TR>'.
 	'<TR><TD></TD><TD ALIGN=right> '.
 		FormSelect('action', array('mod' => 'Modify', 'del' => 'Delete')).
 		' <INPUT TYPE="submit" VALUE="    Send    "> '.
@@ -205,6 +260,9 @@ function DisplayGroupForm() {
 	'<TR><TD> Header: </TD><TD> '.FormInput('header').' </TD></TR>'.
 	'<TR><TD> Description: </TD><TD> '. FormText('desc', 80, 5).'<BR>'.FormCheckbox('addbr').' Auto add "break line" </TD></TR>'.
 	'<TR><TD COLSPAN=2><HR></TD></TR>'.
+	'<TR><TD> Tags: </TD><TD> '.FormCheckarea('tags').' </TD></TR>'.
+	'<TR><TD> New tags: </TD><TD> '.FormText('newtags', 80, 2).' </TD></TR>'.
+	'<TR><TD COLSPAN=2><HR></TD></TR>'.
 	'<TR><TD> Series: </TD><TD> '.
 		FormSelect('sercol', range(1, 10), 0).
 		' x '.
@@ -214,7 +272,7 @@ function DisplayGroupForm() {
 	'<TR><TD> Images: </TD><TD> First number '.FormInput('first', 4, 1).' Quantity '.FormInput('quantity', 4, 1).' </TD></TR>'.
 	'<TR><TD> Number holes: </TD><TD> '.FormText('holes', 60, 2).' </TD></TR>'.
 	'<TR><TD COLSPAN=2><HR></TD></TR>'.
-	'<TR><TD> Group directory: </TD><TD> '.FormInput('dirgr').' </TD></TR>'.
+	'<TR><TD> Collection directory: </TD><TD> '.FormInput('dirgr').' </TD></TR>'.
 	'<TR><TD> Image directory: </TD><TD> '.FormInput('dirimg').' </TD></TR>'.
 	'<TR><TD> Thumbnails directory: </TD><TD> '.FormInput('dirth').' </TD></TR>'.
 	'<TR><TD COLSPAN=2><HR></TD></TR>'.
@@ -241,8 +299,8 @@ function DisplayGroupForm() {
 
 function DisplayThumbForm($group_id) {
 
-	$item    = db_fetch_array(db_query("SELECT * FROM {groups} WHERE id = $group_id"));
-	$imgdir  = GetDirForGroup($group_id);
+	$item    = db_fetch_array(db_query("SELECT * FROM {collections} WHERE id = $group_id"));
+	$imgdir  = GetDirForCollection($group_id);
 	$icondir = preg_replace('/[\/]+/', '/', PICMAN_IMAGE."$imgdir/".$item['thumbsubdir']."/");
 	$content = '';
 

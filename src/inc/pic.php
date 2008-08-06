@@ -2,7 +2,7 @@
 
 $TemplateDir = PICMAN_DEFAULT_TEMP;
 
-$imgdir = GetDirForGroup($page_id);
+$imgdir = GetDirForCollection($page_id);
 
 $prev_href = '';
 $prev_name = '';
@@ -11,12 +11,12 @@ $next_name = '';
 
 if (!empty($imgdir)) {
 
-	$link = db_fetch_array(db_query("SELECT uid_group FROM {links} WHERE id = $page_id"));
-	if ($link['uid_group']) {
-		$item = db_fetch_array(db_query("SELECT * FROM {groups} WHERE uniqid = '".$link['uid_group']."'"));
+	$link = db_fetch_array(db_query("SELECT uid_col FROM {links} WHERE id = $page_id"));
+	if ($link['uid_col']) {
+		$item = db_fetch_array(db_query("SELECT * FROM {collections} WHERE uniqid = '".$link['uid_col']."'"));
 	}
 	else {
-		$item = db_fetch_array(db_query("SELECT * FROM {groups} WHERE id = $page_id"));
+		$item = db_fetch_array(db_query("SELECT * FROM {collections} WHERE id = $page_id"));
 	}
 	$temp = db_fetch_array(db_query("
 	SELECT P.template AS template
@@ -94,7 +94,7 @@ echo UpdateTemplate($pic_temp, array(
 	'rows'     => $item['rows'],
 	'quantity' => $item['quantity'],
 	'picnr'    => $page_pg,
-	'topcat'   => GetTopCatsForGroup($page_id, $page_pg),
+	'topcat'   => GetTopCatsForCollection($page_id, $page_pg),
 	'prevhref' => $prev_href,
 	'prevname' => $prev_name,
 	'nexthref' => $next_href,
